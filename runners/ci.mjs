@@ -141,6 +141,11 @@ function simulators(spike) {
           selected.type.identifier, selected.runtime.identifier], { env }).trim();
         if (selected.device?.state !== 'Booted') checked('xcrun', ['simctl', 'boot', udid], { env });
         checked('xcrun', ['simctl', 'bootstatus', udid, '-b'], { env });
+        // safaridriver attaches far more reliably once Simulator.app shows the device and Safari has
+        // run once (WebKit bug 205532); otherwise it times out finding a remote Safari.
+        exec('open', ['-a', 'Simulator', '--args', '-CurrentDeviceUDID', udid], { env });
+        checked('xcrun', ['simctl', 'launch', udid, 'com.apple.mobilesafari'], { env });
+        exec('sleep', ['8'], { env });
         // Keep the caller's environment for the child, including the spike's Xcode selection.
         const previous = process.env.DEVELOPER_DIR;
         try {

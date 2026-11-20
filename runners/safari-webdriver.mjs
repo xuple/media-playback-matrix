@@ -162,7 +162,7 @@ export async function run(options = {}) {
 
             spawned = startProcess(command, ['-p', String(port)]);
             url = `http://127.0.0.1:${port}`;
-            await waitUntilReady(spawned, url, {
+            await waitUntilReady(spawned, url, { timeoutMs: 60_000,
                 name: 'safaridriver',
                 hint: 'If this Mac has never run safaridriver, run `safaridriver --enable` once as an administrator.',
             });
