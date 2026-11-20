@@ -74,10 +74,10 @@ function matches(result, browser) {
   if (browser === 'chrome') return /chrome/.test(name) && !/chromium/.test(name);
   return name.includes(browser);
 }
-function run(group, command, args) {
+function run(group, command, args, timeoutMs = 20 * 60_000) {
   const expected = groups[group] ?? [descriptor(group)];
   const before = fingerprints();
-  const execution = exec(command, args, { stdio: 'inherit' });
+  const execution = exec(command, args, { stdio: 'inherit', timeout: timeoutMs });
   const results = [];
   for (const [file, hash] of fingerprints()) {
     if (before.get(file) === hash || file.startsWith('ci-')) continue;
@@ -150,7 +150,7 @@ function simulators(spike) {
         const previous = process.env.DEVELOPER_DIR;
         try {
           if (developerDir) process.env.DEVELOPER_DIR = developerDir;
-          if (!run(label, process.execPath, ['runners/safari-webdriver.mjs', '--target', 'simulator', '--udid', udid])) passed = false;
+          if (!run(label, process.execPath, ['runners/safari-webdriver.mjs', '--target', 'simulator', '--udid', udid], 6 * 60_000)) passed = false;
         } finally {
           if (previous === undefined) delete process.env.DEVELOPER_DIR;
           else process.env.DEVELOPER_DIR = previous;

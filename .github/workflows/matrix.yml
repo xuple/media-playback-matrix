@@ -45,6 +45,9 @@ jobs:
           sw_vers | tee diagnostics/macos.txt
           /usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' /Applications/Safari.app/Contents/Info.plist | tee diagnostics/safari.txt
           xcrun simctl list --json > diagnostics/simctl.json
+          safaridriver --version | tee diagnostics/safaridriver-version.txt || true
+          xcodebuild -version | tee diagnostics/xcode.txt || true
+          xcrun simctl list runtimes | tee diagnostics/runtimes.txt || true
       - name: Enable Safari WebDriver
         if: always()
         id: safari
@@ -62,6 +65,7 @@ jobs:
       - name: Sequential simulator sessions
         if: always()
         continue-on-error: true
+        timeout-minutes: 25
         run: node runners/ci.mjs simulators
       - name: Install pinned Playwright and browser channels
         if: always()
@@ -86,6 +90,9 @@ jobs:
           path: out/*.json
           if-no-files-found: warn
           retention-days: 14
+      - name: Collect safaridriver logs
+        if: always()
+        run: cp -R ~/Library/Logs/com.apple.WebDriver diagnostics/webdriver-logs 2>/dev/null || true
       - name: Upload driver and platform diagnostics
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -115,6 +122,8 @@ jobs:
           npm install --ignore-scripts --no-package-lock --no-audit --no-fund
           npx playwright install --with-deps chromium firefox
           npx playwright install chrome msedge
+      - name: Virtual sound card (Firefox needs an audio output)
+        uses: LABSN/sound-ci-helpers@d08c889a7bba7d9b1b059f8f76dac4672ea3a9cf # v1
       - name: Playwright browser columns
         if: always()
         continue-on-error: true
@@ -160,6 +169,13 @@ jobs:
           npm install --ignore-scripts --no-package-lock --no-audit --no-fund
           npx playwright install --with-deps chromium firefox webkit
           npx playwright install chrome
+      - name: Virtual sound card (Firefox needs an audio output)
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq pulseaudio
+          pulseaudio --start --exit-idle-time=-1
+          pactl load-module module-null-sink sink_name=matrix_null
+          pactl set-default-sink matrix_null
+          pactl info | tee diagnostics/pulseaudio.txt
       - name: Playwright browser columns
         if: always()
         continue-on-error: true
@@ -213,14 +229,7 @@ jobs:
           arch: x86_64
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot
           disable-linux-hw-accel: false
-          script: |
-            adb shell getprop ro.build.version.release > diagnostics/android-version.txt
-            adb shell dumpsys package com.android.chrome > diagnostics/chrome-package.txt
-            if ! adb shell pm path com.android.chrome | tee diagnostics/chrome-path.txt | grep -q '^package:'; then
-              node runners/ci.mjs infra android-chrome 'com.android.chrome absent from Play Store image; no APK fallback'
-              exit 1
-            fi
-            node runners/ci.mjs run android-chrome -- node runners/android-chrome.mjs
+          script: bash bin/ci-android.sh android-chrome
       - name: Record emulator setup failure
         if: ${{ always() && steps.emulator.outcome != 'success' }}
         run: |
@@ -322,6 +331,9 @@ jobs:
           sw_vers | tee diagnostics/macos.txt
           /usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' /Applications/Safari.app/Contents/Info.plist | tee diagnostics/safari.txt
           xcrun simctl list --json > diagnostics/simctl.json
+          safaridriver --version | tee diagnostics/safaridriver-version.txt || true
+          xcodebuild -version | tee diagnostics/xcode.txt || true
+          xcrun simctl list runtimes | tee diagnostics/runtimes.txt || true
       - name: Enable Safari WebDriver
         if: always()
         id: safari
@@ -339,6 +351,7 @@ jobs:
       - name: Sequential simulator sessions
         if: always()
         continue-on-error: true
+        timeout-minutes: 15
         run: node runners/ci.mjs simulators --spike
       - name: Require successful desktop and both Xcode simulator sessions
         if: always()
@@ -355,6 +368,9 @@ jobs:
           path: out/*.json
           if-no-files-found: warn
           retention-days: 14
+      - name: Collect safaridriver logs
+        if: always()
+        run: cp -R ~/Library/Logs/com.apple.WebDriver diagnostics/webdriver-logs 2>/dev/null || true
       - name: Upload driver and platform diagnostics
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -394,14 +410,7 @@ jobs:
           arch: x86_64
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot
           disable-linux-hw-accel: false
-          script: |
-            adb shell getprop ro.build.version.release > diagnostics/android-version.txt
-            adb shell dumpsys package com.android.chrome > diagnostics/chrome-package.txt
-            if ! adb shell pm path com.android.chrome | tee diagnostics/chrome-path.txt | grep -q '^package:'; then
-              node runners/ci.mjs infra spike-android-chrome 'com.android.chrome absent from Play Store image; no APK fallback'
-              exit 1
-            fi
-            node runners/ci.mjs run spike-android-chrome -- node runners/android-chrome.mjs
+          script: bash bin/ci-android.sh spike-android-chrome
       - name: Record emulator setup failure
         if: ${{ always() && steps.emulator.outcome != 'success' }}
         run: |

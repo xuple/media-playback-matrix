@@ -160,7 +160,7 @@ export async function run(options = {}) {
             const port = await freePort();
             const command = process.env.SAFARIDRIVER || 'safaridriver';
 
-            spawned = startProcess(command, ['-p', String(port)]);
+            spawned = startProcess(command, ['-p', String(port), '--diagnose']);
             url = `http://127.0.0.1:${port}`;
             await waitUntilReady(spawned, url, { timeoutMs: 60_000,
                 name: 'safaridriver',
