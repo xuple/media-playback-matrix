@@ -36,7 +36,7 @@ jobs:
       - name: Start local fixture server
         run: |
           mkdir -p out diagnostics
-          node server/server.mjs --port 8765 > diagnostics/server.log 2>&1 &
+          node server/server.mjs --port 8765 --host :: > diagnostics/server.log 2>&1 &
           echo $! > diagnostics/server.pid
           node runners/ci.mjs wait
       - name: Record macOS, Safari and simulator inventory
@@ -325,7 +325,7 @@ jobs:
       - name: Start local fixture server
         run: |
           mkdir -p out diagnostics
-          node server/server.mjs --port 8765 > diagnostics/server.log 2>&1 &
+          node server/server.mjs --port 8765 --host :: > diagnostics/server.log 2>&1 &
           echo $! > diagnostics/server.pid
           node runners/ci.mjs wait
       - name: Record macOS, Safari and simulator inventory

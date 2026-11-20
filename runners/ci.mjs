@@ -150,7 +150,7 @@ function simulators(spike) {
         const previous = process.env.DEVELOPER_DIR;
         try {
           if (developerDir) process.env.DEVELOPER_DIR = developerDir;
-          if (!run(label, process.execPath, ['runners/safari-webdriver.mjs', '--target', 'simulator', '--udid', udid], 6 * 60_000)) passed = false;
+          if (!run(label, process.execPath, ['runners/safari-webdriver.mjs', '--target', 'simulator', '--udid', udid, '--base', 'http://localhost:8765'], 6 * 60_000)) passed = false;
         } finally {
           if (previous === undefined) delete process.env.DEVELOPER_DIR;
           else process.env.DEVELOPER_DIR = previous;
@@ -160,6 +160,8 @@ function simulators(spike) {
         save(infrastructure(label, error.message));
         passed = false;
       } finally {
+        // What Safari actually showed, for diagnosing a failed session.
+        if (udid) exec('xcrun', ['simctl', 'io', udid, 'screenshot', `diagnostics/${label}.png`], { env, timeout: 20_000 });
         if (udid) exec('xcrun', ['simctl', 'shutdown', udid], { env });
         if (spike && fs.existsSync(`out/ci-${label}.json`)) {
           fs.copyFileSync(`out/ci-${label}.json`, `diagnostics/simulator-session${suffix}.json`);
