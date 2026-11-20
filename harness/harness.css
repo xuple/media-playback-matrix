@@ -1,0 +1,38 @@
+/* Media playback matrix harness styles. A separate file so host pages with a strict CSP (no inline styles or
+   scripts) can load it. */
+/* Plain and light on purpose: people open this on phones from a link, and drivers only need the buttons. */
+:root { color-scheme: light; --fg: #1a1a1a; --muted: #555; --line: #d6d6d6; --ok: #0a6b2d; --bad: #a3140f; --bg: #fff; --accent: #1a4fd6; }
+* { box-sizing: border-box; }
+body { margin: 0; padding: 16px; background: var(--bg); color: var(--fg);
+  font: 16px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+h1 { font-size: 1.4rem; margin: 0 0 8px; }
+.intro p { margin: 0 0 8px; }
+.device { color: var(--muted); font-size: .85rem; word-break: break-word; }
+table.matrix { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: .9rem; }
+table.matrix th, table.matrix td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: middle; }
+table.matrix thead th { font-size: .8rem; color: var(--muted); font-weight: 600; }
+.name { display: block; font-weight: 600; word-break: break-all; }
+.sub { display: block; color: var(--muted); font-size: .8rem; font-weight: 400; }
+button { font: inherit; min-height: 44px; min-width: 44px; padding: 8px 16px; border-radius: 8px;
+  border: 1px solid var(--accent); background: var(--accent); color: #fff; cursor: pointer; }
+button:disabled { opacity: .55; cursor: default; }
+button.copy { margin-top: 8px; }
+.ok { color: var(--ok); }
+.bad { color: var(--bad); }
+.outcome { display: block; font-weight: 600; }
+.detail { display: block; color: var(--muted); font-size: .75rem; word-break: break-word; max-width: 28em; }
+.heard { display: inline-flex; align-items: center; min-height: 44px; gap: 6px; cursor: pointer; }
+.heard input { width: 24px; height: 24px; }
+.audio-slot audio { display: none; }
+.summary { font-weight: 600; }
+textarea { width: 100%; font: inherit; padding: 8px; border: 1px solid var(--line); border-radius: 6px; }
+.notes-label { display: block; margin: 12px 0 4px; }
+/* Narrow screens: each row becomes a small card so nothing scrolls sideways at 320 px. */
+@media (max-width: 760px) {
+  table.matrix thead { display: none; }
+  table.matrix, table.matrix tbody, table.matrix tr, table.matrix th, table.matrix td { display: block; width: 100%; }
+  table.matrix tr { border: 1px solid var(--line); border-radius: 8px; margin: 0 0 12px; padding: 4px 0; }
+  table.matrix th, table.matrix td { border: 0; padding: 4px 12px; }
+  table.matrix td[data-label]::before { content: attr(data-label) ": "; color: var(--muted); font-size: .8rem; }
+  table.matrix td.cell-btn button { width: 100%; }
+}

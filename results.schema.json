@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Audio matrix results",
+  "type": "object",
+  "required": ["runner", "browser", "os", "rows", "started_at", "finished_at"],
+  "properties": {
+    "runner": {"type": "string"},
+    "browser": {"type": "object", "required": ["name", "version"], "properties": {"name": {"type": "string"}, "version": {"type": "string"}}},
+    "os": {"type": "object", "required": ["name", "version"], "properties": {"name": {"type": "string"}, "version": {"type": "string"}}},
+    "device": {"type": ["string", "null"]},
+    "started_at": {"type": "string"}, "finished_at": {"type": "string"},
+    "server_commit": {"type": ["string", "null"]}, "recipe_sha256": {"type": ["string", "null"]},
+    "rows": {"type": "array", "items": {
+      "type": "object",
+      "required": ["item", "rendition", "variant", "required", "outcome", "stages"],
+      "properties": {
+        "item": {"type": "string"},
+        "rendition": {"enum": ["playback", "original"]},
+        "variant": {"enum": ["live", "no-cache", "as-stored"]},
+        "required": {"type": "boolean"},
+        "outcome": {"enum": ["pass", "fail:media", "fail:policy", "fail:stall", "infra", "missing"]},
+        "can_play_type": {"type": "string"},
+        "duration": {"type": ["number", "null"]},
+        "error": {"type": ["object", "null"]},
+        "stages": {"type": "object", "properties": {
+          "load": {"$ref": "#/$defs/stage"}, "play": {"$ref": "#/$defs/stage"},
+          "seek": {"oneOf": [{"$ref": "#/$defs/stage"}, {"type": "null"}]},
+          "replay": {"oneOf": [{"$ref": "#/$defs/stage"}, {"type": "null"}]},
+          "muted_autoplay": {"oneOf": [{"$ref": "#/$defs/stage"}, {"type": "null"}]}
+        }},
+        "requests": {"type": "array", "items": {"type": "object", "properties": {"range": {"type": ["string", "null"]}, "status": {"type": "integer"}, "bytes": {"type": "integer"}}}}
+      }
+    }}
+  },
+  "$defs": {"stage": {"type": "object", "required": ["ok", "ms"], "properties": {"ok": {"type": "boolean"}, "ms": {"type": "integer"}, "detail": {"type": "string"}}}}
+}

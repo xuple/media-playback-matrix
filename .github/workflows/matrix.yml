@@ -1,0 +1,429 @@
+name: Media playback matrix
+
+# Runs from the repository root.
+permissions:
+  contents: read
+
+on:
+  push:
+  schedule:
+    - cron: '0 5 * * 1'
+  workflow_dispatch:
+    inputs:
+      spike:
+        description: 'Run verbose driver and emulator checks before trusting the matrix'
+        type: boolean
+        default: false
+
+# Keep genuine user gestures: do not pass autoplay-policy bypass flags.
+defaults:
+  run:
+    shell: bash
+
+env:
+  MATRIX_BASE_URL: http://127.0.0.1:8765
+
+jobs:
+  macos:
+    if: ${{ !inputs.spike }}
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '20'
+      - name: Start local fixture server
+        run: |
+          mkdir -p out diagnostics
+          node server/server.mjs --port 8765 > diagnostics/server.log 2>&1 &
+          echo $! > diagnostics/server.pid
+          node runners/ci.mjs wait
+      - name: Record macOS, Safari and simulator inventory
+        if: always()
+        run: |
+          sw_vers | tee diagnostics/macos.txt
+          /usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' /Applications/Safari.app/Contents/Info.plist | tee diagnostics/safari.txt
+          xcrun simctl list --json > diagnostics/simctl.json
+      - name: Enable Safari WebDriver
+        if: always()
+        id: safari
+        continue-on-error: true
+        run: sudo safaridriver --enable
+      - name: Safari desktop session
+        if: always()
+        continue-on-error: true
+        run: |
+          if [ '${{ steps.safari.outcome }}' != success ]; then
+            node runners/ci.mjs infra safari-macos 'safaridriver could not be enabled'
+            exit 1
+          fi
+          node runners/ci.mjs run safari-macos -- node runners/safari-webdriver.mjs --target safari
+      - name: Sequential simulator sessions
+        if: always()
+        continue-on-error: true
+        run: node runners/ci.mjs simulators
+      - name: Install pinned Playwright and browser channels
+        if: always()
+        run: |
+          npm install --prefix runners --ignore-scripts --no-package-lock --no-audit --no-fund
+          cd runners
+          npx playwright install --with-deps chromium firefox webkit
+          npx playwright install chrome msedge
+      - name: Playwright browser columns
+        if: always()
+        continue-on-error: true
+        run: node runners/ci.mjs run macos -- node runners/playwright.mjs --browsers chrome,msedge,firefox,webkit
+      - name: Stop fixture server
+        if: always()
+        run: |
+          if [ -f diagnostics/server.pid ]; then kill "$(cat diagnostics/server.pid)" || true; fi
+      - name: Upload result JSON
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: audio-results-macos
+          path: out/*.json
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Upload driver and platform diagnostics
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: diagnostics-macos
+          path: diagnostics/
+          retention-days: 14
+  windows:
+    if: ${{ !inputs.spike }}
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '20'
+      - name: Start local fixture server
+        run: |
+          mkdir -p out diagnostics
+          node server/server.mjs --port 8765 > diagnostics/server.log 2>&1 &
+          echo $! > diagnostics/server.pid
+          node runners/ci.mjs wait
+      - name: Install pinned Playwright and browser channels
+        if: always()
+        run: |
+          npm install --prefix runners --ignore-scripts --no-package-lock --no-audit --no-fund
+          cd runners
+          npx playwright install --with-deps chromium firefox
+          npx playwright install chrome msedge
+      - name: Playwright browser columns
+        if: always()
+        continue-on-error: true
+        run: node runners/ci.mjs run windows -- node runners/playwright.mjs --browsers chrome,msedge,firefox
+      - name: Stop fixture server
+        if: always()
+        run: |
+          if [ -f diagnostics/server.pid ]; then kill "$(cat diagnostics/server.pid)" || true; fi
+      - name: Upload result JSON
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: audio-results-windows
+          path: out/*.json
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Upload driver and platform diagnostics
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: diagnostics-windows
+          path: diagnostics/
+          retention-days: 14
+  linux:
+    if: ${{ !inputs.spike }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '20'
+      - name: Start local fixture server
+        run: |
+          mkdir -p out diagnostics
+          node server/server.mjs --port 8765 > diagnostics/server.log 2>&1 &
+          echo $! > diagnostics/server.pid
+          node runners/ci.mjs wait
+      - name: Install pinned Playwright and browser channels
+        if: always()
+        run: |
+          npm install --prefix runners --ignore-scripts --no-package-lock --no-audit --no-fund
+          cd runners
+          npx playwright install --with-deps chromium firefox webkit
+          npx playwright install chrome
+      - name: Playwright browser columns
+        if: always()
+        continue-on-error: true
+        run: node runners/ci.mjs run linux -- node runners/playwright.mjs --browsers chrome,firefox,webkit,chromium
+      - name: Stop fixture server
+        if: always()
+        run: |
+          if [ -f diagnostics/server.pid ]; then kill "$(cat diagnostics/server.pid)" || true; fi
+      - name: Upload result JSON
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: audio-results-linux
+          path: out/*.json
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Upload driver and platform diagnostics
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: diagnostics-linux
+          path: diagnostics/
+          retention-days: 14
+  android:
+    if: ${{ !inputs.spike }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '20'
+      - name: Start local fixture server
+        run: |
+          mkdir -p out diagnostics
+          node server/server.mjs --port 8765 > diagnostics/server.log 2>&1 &
+          echo $! > diagnostics/server.pid
+          node runners/ci.mjs wait
+      - name: Enable KVM (android-emulator-runner documented udev rule)
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          test -r /dev/kvm && test -w /dev/kvm
+      - name: Play Store emulator and Chrome session
+        id: emulator
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: 34
+          target: google_apis_playstore
+          arch: x86_64
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot
+          disable-linux-hw-accel: false
+          script: |
+            adb shell getprop ro.build.version.release > diagnostics/android-version.txt
+            adb shell dumpsys package com.android.chrome > diagnostics/chrome-package.txt
+            if ! adb shell pm path com.android.chrome | tee diagnostics/chrome-path.txt | grep -q '^package:'; then
+              node runners/ci.mjs infra android-chrome 'com.android.chrome absent from Play Store image; no APK fallback'
+              exit 1
+            fi
+            node runners/ci.mjs run android-chrome -- node runners/android-chrome.mjs
+      - name: Record emulator setup failure
+        if: ${{ always() && steps.emulator.outcome != 'success' }}
+        run: |
+          if [ ! -f out/ci-android-chrome.json ]; then
+            node runners/ci.mjs infra android-chrome 'KVM, emulator boot or Android driver setup failed; see diagnostics'
+          fi
+      - name: Stop fixture server
+        if: always()
+        run: |
+          if [ -f diagnostics/server.pid ]; then kill "$(cat diagnostics/server.pid)" || true; fi
+      - name: Upload result JSON
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: audio-results-android
+          path: out/*.json
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Upload driver and platform diagnostics
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: diagnostics-android
+          path: diagnostics/
+          retention-days: 14
+  report:
+    needs: [macos, windows, linux, android]
+    if: ${{ always() && !inputs.spike }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '20'
+      - name: Download matrix results
+        continue-on-error: true
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: audio-results-*
+          path: out
+          merge-multiple: true
+      - name: Fill absent columns and fixture rows
+        id: prepare
+        continue-on-error: true
+        run: node runners/ci.mjs prepare
+      - name: Render Markdown report
+        id: render
+        continue-on-error: true
+        run: node runners/report.mjs out/*.json > report.md
+      - name: Append report to job summary
+        if: always()
+        run: |
+          if [ -s report.md ]; then cat report.md >> "$GITHUB_STEP_SUMMARY";
+          else echo 'Report unavailable; inspect result artifacts and driver logs.' >> "$GITHUB_STEP_SUMMARY"; fi
+      - name: Merge JSON and gate required columns
+        id: gate
+        if: always()
+        continue-on-error: true
+        run: node runners/ci.mjs merge
+      - name: Upload merged results and report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: audio-matrix-report
+          path: |
+            merged-results.json
+            report.md
+            out/*.json
+          retention-days: 14
+      - name: Enforce reporting and required-row success
+        if: always()
+        env:
+          PREPARE: ${{ steps.prepare.outcome }}
+          RENDER: ${{ steps.render.outcome }}
+          GATE: ${{ steps.gate.outcome }}
+        run: test "$PREPARE" = success && test "$RENDER" = success && test "$GATE" = success
+  # A job has one host OS: Android's KVM spike needs a separate Linux job.
+  spike:
+    if: ${{ inputs.spike }}
+    runs-on: macos-15
+    timeout-minutes: 60
+    env:
+      DEBUG: "*"
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '20'
+      - name: Start local fixture server
+        run: |
+          mkdir -p out diagnostics
+          node server/server.mjs --port 8765 > diagnostics/server.log 2>&1 &
+          echo $! > diagnostics/server.pid
+          node runners/ci.mjs wait
+      - name: Record macOS, Safari and simulator inventory
+        if: always()
+        run: |
+          sw_vers | tee diagnostics/macos.txt
+          /usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' /Applications/Safari.app/Contents/Info.plist | tee diagnostics/safari.txt
+          xcrun simctl list --json > diagnostics/simctl.json
+      - name: Enable Safari WebDriver
+        if: always()
+        id: safari
+        continue-on-error: true
+        run: sudo safaridriver --enable
+      - name: Safari desktop session
+        if: always()
+        continue-on-error: true
+        run: |
+          if [ '${{ steps.safari.outcome }}' != success ]; then
+            node runners/ci.mjs infra spike-safari-macos 'safaridriver could not be enabled'
+            exit 1
+          fi
+          node runners/ci.mjs run spike-safari-macos -- node runners/safari-webdriver.mjs --target safari
+      - name: Sequential simulator sessions
+        if: always()
+        continue-on-error: true
+        run: node runners/ci.mjs simulators --spike
+      - name: Require successful desktop and both Xcode simulator sessions
+        if: always()
+        run: node runners/ci.mjs spike-gate
+      - name: Stop fixture server
+        if: always()
+        run: |
+          if [ -f diagnostics/server.pid ]; then kill "$(cat diagnostics/server.pid)" || true; fi
+      - name: Upload result JSON
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: spike-results-spike
+          path: out/*.json
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Upload driver and platform diagnostics
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: diagnostics-spike
+          path: diagnostics/
+          retention-days: 14
+  spike-android:
+    if: ${{ inputs.spike }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      DEBUG: "*"
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '20'
+      - name: Start local fixture server
+        run: |
+          mkdir -p out diagnostics
+          node server/server.mjs --port 8765 > diagnostics/server.log 2>&1 &
+          echo $! > diagnostics/server.pid
+          node runners/ci.mjs wait
+      - name: Enable KVM (android-emulator-runner documented udev rule)
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          test -r /dev/kvm && test -w /dev/kvm
+      - name: Play Store emulator and Chrome session
+        id: emulator
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: 34
+          target: google_apis_playstore
+          arch: x86_64
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot
+          disable-linux-hw-accel: false
+          script: |
+            adb shell getprop ro.build.version.release > diagnostics/android-version.txt
+            adb shell dumpsys package com.android.chrome > diagnostics/chrome-package.txt
+            if ! adb shell pm path com.android.chrome | tee diagnostics/chrome-path.txt | grep -q '^package:'; then
+              node runners/ci.mjs infra spike-android-chrome 'com.android.chrome absent from Play Store image; no APK fallback'
+              exit 1
+            fi
+            node runners/ci.mjs run spike-android-chrome -- node runners/android-chrome.mjs
+      - name: Record emulator setup failure
+        if: ${{ always() && steps.emulator.outcome != 'success' }}
+        run: |
+          if [ ! -f out/ci-spike-android-chrome.json ]; then
+            node runners/ci.mjs infra spike-android-chrome 'KVM, emulator boot or Android driver setup failed; see diagnostics'
+          fi
+      - name: Stop fixture server
+        if: always()
+        run: |
+          if [ -f diagnostics/server.pid ]; then kill "$(cat diagnostics/server.pid)" || true; fi
+      - name: Upload result JSON
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: spike-results-spike-android
+          path: out/*.json
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Upload driver and platform diagnostics
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: diagnostics-spike-android
+          path: diagnostics/
+          retention-days: 14

@@ -1,0 +1,359 @@
+{
+  "generated_by": "bin/make-playback.mjs",
+  "recipe_sha256": "18a4ed1ad111a01f594b5b2ff1918209002fdd5c647944bd09bc85f6ccf5e500",
+  "ffmpeg": "ffmpeg version 7.1.3-0+deb13u1 Copyright (c) 2000-2025 the FFmpeg developers",
+  "items": [
+    {
+      "name": "chrome-recorder-60s.webm",
+      "original": {
+        "file": "originals/chrome-recorder-60s.webm",
+        "mime": "audio/webm",
+        "sha256": "5cc7bcac03a0c5ae4a1153e305c2885d9198488c2e4eae5e0fd7b70b63ba8865",
+        "demuxer": "matroska",
+        "codec": "opus",
+        "profile": null,
+        "sample_rate": 48000,
+        "channels": 1,
+        "duration": null,
+        "container": "matroska,webm"
+      },
+      "playback": {
+        "file": "playback/chrome-recorder-60s.webm.m4a",
+        "mime": "audio/mp4",
+        "mode": "transcode",
+        "sha256": "5dff1154ba9bb2a519e3982c336929ca10cf132215bc6f51b800937861c1832f",
+        "codec": "aac",
+        "profile": "LC",
+        "sample_rate": 48000,
+        "channels": 1,
+        "duration": 60.007,
+        "container": "mov,mp4,m4a,3gp,3g2,mj2"
+      },
+      "id": "chrome-recorder-60s-webm",
+      "checks": [
+        "seek"
+      ],
+      "stored_mime": "video/webm"
+    },
+    {
+      "name": "chrome-recorder.webm",
+      "original": {
+        "file": "originals/chrome-recorder.webm",
+        "mime": "audio/webm",
+        "sha256": "4a7c82d36c4974a6e90fedabab9886b348c798db2a69540e0d53c1f58628bb46",
+        "demuxer": "matroska",
+        "codec": "opus",
+        "profile": null,
+        "sample_rate": 48000,
+        "channels": 1,
+        "duration": null,
+        "container": "matroska,webm"
+      },
+      "playback": {
+        "file": "playback/chrome-recorder.webm.m4a",
+        "mime": "audio/mp4",
+        "mode": "transcode",
+        "sha256": "fbab040e01383a1a0d8d1970ab11c9c247d647429dd14445068e1081ffadb61a",
+        "codec": "aac",
+        "profile": "LC",
+        "sample_rate": 48000,
+        "channels": 1,
+        "duration": 12.007,
+        "container": "mov,mp4,m4a,3gp,3g2,mj2"
+      },
+      "id": "chrome-recorder-webm",
+      "checks": [
+        "replay"
+      ],
+      "stored_mime": "video/webm"
+    },
+    {
+      "name": "firefox-recorder.ogg",
+      "original": {
+        "file": "originals/firefox-recorder.ogg",
+        "mime": "audio/ogg",
+        "sha256": "690efd332e1059a32cb8080f265d4de03db3d31eb8a579555e0773bde79afd48",
+        "demuxer": "ogg",
+        "codec": "opus",
+        "profile": null,
+        "sample_rate": 48000,
+        "channels": 1,
+        "duration": 12.007,
+        "container": "ogg"
+      },
+      "playback": {
+        "file": "playback/firefox-recorder.ogg.m4a",
+        "mime": "audio/mp4",
+        "mode": "transcode",
+        "sha256": "e904a5009560b6a0eefaec03b950cde92349dcaf963a5bfc2712fde49b3cfec2",
+        "codec": "aac",
+        "profile": "LC",
+        "sample_rate": 48000,
+        "channels": 1,
+        "duration": 12,
+        "container": "mov,mp4,m4a,3gp,3g2,mj2"
+      },
+      "id": "firefox-recorder-ogg",
+      "checks": [
+        "replay"
+      ],
+      "stored_mime": "audio/ogg"
+    },
+    {
+      "name": "safari-recorder.mp4",
+      "original": {
+        "file": "originals/safari-recorder.mp4",
+        "mime": "audio/mp4",
+        "sha256": "3e2906fcd1c6053af9175cd000ae55563454fcef59392b180875f320acf7f055",
+        "demuxer": "mov",
+        "codec": "aac",
+        "profile": "LC",
+        "sample_rate": 48000,
+        "channels": 1,
+        "duration": 12.021,
+        "container": "mov,mp4,m4a,3gp,3g2,mj2"
+      },
+      "playback": {
+        "file": "playback/safari-recorder.mp4.m4a",
+        "mime": "audio/mp4",
+        "mode": "copy",
+        "sha256": "b25684e70b26dcece33c17dc088d4721b67588eaa154f2a028fb955421732c1b",
+        "codec": "aac",
+        "profile": "LC",
+        "sample_rate": 48000,
+        "channels": 1,
+        "duration": 12.032,
+        "container": "mov,mp4,m4a,3gp,3g2,mj2"
+      },
+      "id": "safari-recorder-mp4",
+      "checks": [
+        "replay"
+      ],
+      "stored_mime": "video/mp4"
+    },
+    {
+      "name": "upload-stereo.flac",
+      "original": {
+        "file": "originals/upload-stereo.flac",
+        "mime": "audio/flac",
+        "sha256": "882c914ecabbbc4d120dd09d6a06964735a027ea6445d9722ad54d8b30a15b1c",
+        "demuxer": "flac",
+        "codec": "flac",
+        "profile": null,
+        "sample_rate": 44100,
+        "channels": 2,
+        "duration": 12,
+        "container": "flac"
+      },
+      "playback": {
+        "file": "playback/upload-stereo.flac.m4a",
+        "mime": "audio/mp4",
+        "mode": "transcode",
+        "sha256": "73fadec8c562933963c929498327419c31c6f303b5a68d556a275f76a5067637",
+        "codec": "aac",
+        "profile": "LC",
+        "sample_rate": 44100,
+        "channels": 2,
+        "duration": 12,
+        "container": "mov,mp4,m4a,3gp,3g2,mj2"
+      },
+      "id": "upload-stereo-flac",
+      "checks": [
+        "replay"
+      ],
+      "stored_mime": "audio/flac"
+    },
+    {
+      "name": "upload.aac",
+      "original": {
+        "file": "originals/upload.aac",
+        "mime": "audio/aac",
+        "sha256": "01b9707ec6827bdc926f29e083e531320c9b72ec906840943abd4809f2f0cb21",
+        "demuxer": "aac",
+        "codec": "aac",
+        "profile": "LC",
+        "sample_rate": 48000,
+        "channels": 1,
+        "duration": 11.855,
+        "container": "aac"
+      },
+      "playback": {
+        "file": "playback/upload.aac.m4a",
+        "mime": "audio/mp4",
+        "mode": "copy",
+        "sha256": "14882be1a3988723f2beac9df8a566262fbab3541fee2a3c221f1113f46180f1",
+        "codec": "aac",
+        "profile": "LC",
+        "sample_rate": 48000,
+        "channels": 1,
+        "duration": 12.032,
+        "container": "mov,mp4,m4a,3gp,3g2,mj2"
+      },
+      "id": "upload-aac",
+      "checks": [
+        "replay"
+      ],
+      "stored_mime": "audio/aac"
+    },
+    {
+      "name": "upload.mp3",
+      "original": {
+        "file": "originals/upload.mp3",
+        "mime": "audio/mpeg",
+        "sha256": "01034d35055305446ad99a354dd6d3f16df83e63db54e74e0331bae8194b852b",
+        "demuxer": "mp3",
+        "codec": "mp3",
+        "profile": null,
+        "sample_rate": 48000,
+        "channels": 1,
+        "duration": 12.024,
+        "container": "mp3"
+      },
+      "playback": {
+        "file": "playback/upload.mp3.m4a",
+        "mime": "audio/mp4",
+        "mode": "transcode",
+        "sha256": "58daec6926d120c17644d3acc4f2213d09a89f44bc7742979b8bd20d0fd88a55",
+        "codec": "aac",
+        "profile": "LC",
+        "sample_rate": 48000,
+        "channels": 1,
+        "duration": 12,
+        "container": "mov,mp4,m4a,3gp,3g2,mj2"
+      },
+      "id": "upload-mp3",
+      "checks": [
+        "replay"
+      ],
+      "stored_mime": "audio/mpeg"
+    },
+    {
+      "name": "upload.wav",
+      "original": {
+        "file": "originals/upload.wav",
+        "mime": "audio/wav",
+        "sha256": "a856501e87e9a07350bc87f8147351915c1d39ba49cf71163dead1082ce1b3c5",
+        "demuxer": "wav",
+        "codec": "pcm_s16le",
+        "profile": null,
+        "sample_rate": 44100,
+        "channels": 1,
+        "duration": 12,
+        "container": "wav"
+      },
+      "playback": {
+        "file": "playback/upload.wav.m4a",
+        "mime": "audio/mp4",
+        "mode": "transcode",
+        "sha256": "0470f2517b931baa1a95c29b469976f62a80848dc0f2b1ecddca50477d5cff0f",
+        "codec": "aac",
+        "profile": "LC",
+        "sample_rate": 44100,
+        "channels": 1,
+        "duration": 12,
+        "container": "mov,mp4,m4a,3gp,3g2,mj2"
+      },
+      "id": "upload-wav",
+      "checks": [
+        "replay"
+      ],
+      "stored_mime": "audio/wav"
+    },
+    {
+      "name": "voice-memo-60s.m4a",
+      "original": {
+        "file": "originals/voice-memo-60s.m4a",
+        "mime": "audio/mp4",
+        "sha256": "c26693ea95c387d7e052ee29de3b41e932ba7bf16a832e646b9e839b6560b50a",
+        "demuxer": "mov",
+        "codec": "aac",
+        "profile": "LC",
+        "sample_rate": 48000,
+        "channels": 1,
+        "duration": 60,
+        "container": "mov,mp4,m4a,3gp,3g2,mj2"
+      },
+      "playback": {
+        "file": "playback/voice-memo-60s.m4a.m4a",
+        "mime": "audio/mp4",
+        "mode": "copy",
+        "sha256": "4e13f0ddba7725bdbd0fef56d1431b104ef593d09920f418f58c555983b01da0",
+        "codec": "aac",
+        "profile": "LC",
+        "sample_rate": 48000,
+        "channels": 1,
+        "duration": 60,
+        "container": "mov,mp4,m4a,3gp,3g2,mj2"
+      },
+      "id": "voice-memo-60s-m4a",
+      "checks": [
+        "seek"
+      ],
+      "stored_mime": "audio/x-m4a"
+    },
+    {
+      "name": "voice-memo.m4a",
+      "original": {
+        "file": "originals/voice-memo.m4a",
+        "mime": "audio/mp4",
+        "sha256": "7e877676eb042b0a58cc4c5fcb7a6295e01248ec2268f29036b6dc785dc8e96e",
+        "demuxer": "mov",
+        "codec": "aac",
+        "profile": "LC",
+        "sample_rate": 48000,
+        "channels": 1,
+        "duration": 12,
+        "container": "mov,mp4,m4a,3gp,3g2,mj2"
+      },
+      "playback": {
+        "file": "playback/voice-memo.m4a.m4a",
+        "mime": "audio/mp4",
+        "mode": "copy",
+        "sha256": "54a11221e333735344a8033bb8c9f47dd416c680d30e2250caf6489765d84d7b",
+        "codec": "aac",
+        "profile": "LC",
+        "sample_rate": 48000,
+        "channels": 1,
+        "duration": 12,
+        "container": "mov,mp4,m4a,3gp,3g2,mj2"
+      },
+      "id": "voice-memo-m4a",
+      "checks": [
+        "replay"
+      ],
+      "stored_mime": "audio/x-m4a"
+    },
+    {
+      "name": "whatsapp-note.opus",
+      "original": {
+        "file": "originals/whatsapp-note.opus",
+        "mime": "audio/ogg",
+        "sha256": "ff9995aa31569f8b8b4a453330162fb8b893554488cc7c3a1f780414618d1aa9",
+        "demuxer": "ogg",
+        "codec": "opus",
+        "profile": null,
+        "sample_rate": 48000,
+        "channels": 1,
+        "duration": 12.007,
+        "container": "ogg"
+      },
+      "playback": {
+        "file": "playback/whatsapp-note.opus.m4a",
+        "mime": "audio/mp4",
+        "mode": "transcode",
+        "sha256": "a8a26282cf66606109c4e238345b05681770a148c085108ee84076c126fbdaa9",
+        "codec": "aac",
+        "profile": "LC",
+        "sample_rate": 48000,
+        "channels": 1,
+        "duration": 12,
+        "container": "mov,mp4,m4a,3gp,3g2,mj2"
+      },
+      "id": "whatsapp-note-opus",
+      "checks": [
+        "replay"
+      ],
+      "stored_mime": "audio/ogg"
+    }
+  ]
+}
