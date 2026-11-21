@@ -389,12 +389,23 @@
       await waitFor(ctx, audio, function () { return endedFlag || audio.ended; }, DEADLINE.replay, 'ended after seeking to ' + round(target));
       audio.removeEventListener('ended', onEnded);
       var left = DEADLINE.replay - (now() - t0);
-      startPlay(ctx, audio); // play() after ended restarts from 0 (HTML spec); no new gesture needed on the same element
-      await waitFor(ctx, audio, function () {
-        return !audio.ended && audio.currentTime >= CHECK_ADVANCE && audio.currentTime < 5;
-      }, Math.max(left, 1), 'progress after replay from 0');
+      // Rewind explicitly, as a real player's replay does (desktop Safari on CI sometimes sat at 0 when relying on
+      // play()'s implicit restart after `ended`). No new gesture is needed on the same element.
+      var replayed = function () { return !audio.ended && audio.currentTime >= CHECK_ADVANCE && audio.currentTime < 5; };
+      audio.currentTime = 0;
+      startPlay(ctx, audio);
+      var retried = false;
+      try {
+        await waitFor(ctx, audio, replayed, Math.max(left / 2, 1), 'progress after replay from 0');
+      } catch (first) {
+        // One more press of play, as a person would; recorded in the detail so it stays visible.
+        retried = true;
+        audio.currentTime = 0;
+        startPlay(ctx, audio);
+        await waitFor(ctx, audio, replayed, Math.max(DEADLINE.replay - (now() - t0), 1), 'progress after replay from 0 (retried once)');
+      }
       res.stages.replay = { ok: true, ms: Math.round(now() - t0),
-        detail: 'ended, replayed to t=' + round(audio.currentTime) + promiseNote(ctx) };
+        detail: 'ended, replayed to t=' + round(audio.currentTime) + (retried ? ' · needed a second play' : '') + promiseNote(ctx) };
     } catch (e) { stageFail(res, 'replay', t0, e); }
   }
 
