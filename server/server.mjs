@@ -61,6 +61,9 @@ const assets = new Map([
         '/harness/harness.js',
         [resolve(root, 'harness/harness.js'), 'text/javascript; charset=utf-8'],
     ],
+    // The stylesheet is a separate file so host pages with a strict CSP can load it (and it sets 44 px tap targets).
+    ['/harness.css', [resolve(root, 'harness/harness.css'), 'text/css; charset=utf-8']],
+    ['/harness/harness.css', [resolve(root, 'harness/harness.css'), 'text/css; charset=utf-8']],
 ]);
 
 function reply(req, res, status, body, type = 'text/plain; charset=utf-8') {

@@ -837,10 +837,12 @@ test('resolveChromedriver downloads the milestone zip when nothing is on PATH', 
     }
 });
 
-test('resolveChromedriver prefers PATH and does not download', async () => {
+test('resolveChromedriver prefers a matching PATH driver and does not download', async () => {
     let fetched = false;
     const resolved = await resolveChromedriver({
         env: {},
+        chromeVersion: '131.0.6778.81',
+        driverVersion: () => '131',
         findOnPath: async () => '/opt/chromedriver',
         fetchImpl: async () => {
             fetched = true;
@@ -852,4 +854,23 @@ test('resolveChromedriver prefers PATH and does not download', async () => {
     assert.equal(resolved.path, '/opt/chromedriver');
     assert.equal(resolved.source, 'PATH');
     assert.equal(fetched, false);
+});
+
+test('resolveChromedriver ignores a PATH driver for another Chrome and uses the legacy store for 114 and older', async () => {
+    const urls = [];
+    await assert.rejects(resolveChromedriver({
+        env: {},
+        chromeVersion: '113.0.5672.136',
+        driverVersion: () => '157',
+        findOnPath: async () => '/opt/chromedriver',
+        platform: 'linux64',
+        fetchImpl: async (url) => {
+            urls.push(String(url));
+            if (String(url).endsWith('/LATEST_RELEASE_113')) return { ok: true, text: async () => '113.0.5672.63\n' };
+            return { ok: false, status: 404, arrayBuffer: async () => new ArrayBuffer(0) };
+        },
+        cacheDir: (await import('node:os')).tmpdir() + '/am-legacy-test-' + process.pid,
+    }));
+    assert.equal(urls[0], 'https://chromedriver.storage.googleapis.com/LATEST_RELEASE_113');
+    assert.equal(urls[1], 'https://chromedriver.storage.googleapis.com/113.0.5672.63/chromedriver_linux64.zip');
 });
