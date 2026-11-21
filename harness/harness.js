@@ -14,7 +14,7 @@
 (function () {
   'use strict';
 
-  var DEADLINE = { load: 8000, play: 5000, seek: 5000, replay: 12000, muted: 6000 };
+  var DEADLINE = { load: 8000, play: 5000, seek: 5000, replay: 14000, muted: 6000 };
   var PLAY_ADVANCE = 0.5;   // seconds of progress that count as "playing"
   var CHECK_ADVANCE = 0.3;  // seconds of progress after seek / replay / muted autoplay
   var SEEK_TO = 30;
@@ -391,23 +391,31 @@
       await waitFor(ctx, audio, function () { return endedFlag || audio.ended; }, DEADLINE.replay, 'ended after seeking to ' + round(target));
       audio.removeEventListener('ended', onEnded);
       var left = DEADLINE.replay - (now() - t0);
-      // Rewind explicitly, as a real player's replay does (desktop Safari on CI sometimes sat at 0 when relying on
-      // play()'s implicit restart after `ended`). No new gesture is needed on the same element.
+      // 1. What the app's player does: play() after `ended` (the spec restarts from 0). No new gesture is needed on
+      //    the same element.
+      // 2. Only if that doesn't move: rewind, WAIT for `seeked`, then play(). Rewinding and calling play() at once
+      //    races in WebKit (play() resolves, then the element is paused and ended again at t=0; CI 21 Nov 2026).
+      // The detail says which one worked: if 2 is needed on a platform, the app's player needs it too.
       var replayed = function () { return !audio.ended && audio.currentTime >= CHECK_ADVANCE && audio.currentTime < 5; };
-      audio.currentTime = 0;
+      var how = 'play() after ended';
       startPlay(ctx, audio);
-      var retried = false;
       try {
-        await waitFor(ctx, audio, replayed, Math.max(left / 2, 1), 'progress after replay from 0');
+        await waitFor(ctx, audio, replayed, Math.max(Math.min(left, 5000), 1), 'progress after play() following ended');
       } catch (first) {
-        // One more press of play, as a person would; recorded in the detail so it stays visible.
-        retried = true;
+        how = 'needed rewind + seeked before play()';
+        audio.pause();
+        var seekedOnce = new Promise(function (resolve) {
+          var done = function () { audio.removeEventListener('seeked', done); resolve(); };
+          audio.addEventListener('seeked', done);
+          setTimeout(done, 3000);
+        });
         audio.currentTime = 0;
+        await seekedOnce;
         startPlay(ctx, audio);
-        await waitFor(ctx, audio, replayed, Math.max(DEADLINE.replay - (now() - t0), 1), 'progress after replay from 0 (retried once)');
+        await waitFor(ctx, audio, replayed, Math.max(DEADLINE.replay - (now() - t0), 1), 'progress after rewind + seeked + play()');
       }
       res.stages.replay = { ok: true, ms: Math.round(now() - t0),
-        detail: 'ended, replayed to t=' + round(audio.currentTime) + (retried ? ' · needed a second play' : '') + promiseNote(ctx) };
+        detail: 'ended, replayed to t=' + round(audio.currentTime) + ' · ' + how + promiseNote(ctx) };
     } catch (e) { stageFail(res, 'replay', t0, e); }
   }
 
