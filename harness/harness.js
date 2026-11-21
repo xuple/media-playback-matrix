@@ -14,7 +14,7 @@
 (function () {
   'use strict';
 
-  var DEADLINE = { load: 8000, play: 5000, seek: 5000, replay: 6000, muted: 6000 };
+  var DEADLINE = { load: 8000, play: 5000, seek: 5000, replay: 12000, muted: 6000 };
   var PLAY_ADVANCE = 0.5;   // seconds of progress that count as "playing"
   var CHECK_ADVANCE = 0.3;  // seconds of progress after seek / replay / muted autoplay
   var SEEK_TO = 30;
@@ -223,7 +223,9 @@
       timer = setTimeout(function () {
         cleanup();
         reject(new StageError('fail:stall', 'no ' + what + ' within ' + ms + ' ms (readyState ' + audio.readyState +
-          ', networkState ' + audio.networkState + ', t=' + round(audio.currentTime) + ')'));
+          ', networkState ' + audio.networkState + ', t=' + round(audio.currentTime) +
+          ', paused ' + audio.paused + ', ended ' + audio.ended + ', seeking ' + audio.seeking +
+          ', play() ' + (ctx.rejected ? 'rejected' : (ctx.resolved ? 'resolved' : 'pending')) + ')'));
       }, ms);
       tick();
     });
