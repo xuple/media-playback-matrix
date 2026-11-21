@@ -1,4 +1,5 @@
 // CI orchestration only. Browser gestures and stage measurements belong to the runners.
+import { recoveryFailures } from '../lib/recovery.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -109,7 +110,7 @@ function run(group, command, args, timeoutMs = 20 * 60_000) {
       }
     }
     result = complete(result, manifest());
-    if (descriptor(label)[3] && result.rows.some(row => row.required && row.outcome !== 'pass')) failed = true;
+    if (descriptor(label)[3] && (result.rows.some(row => row.required && row.outcome !== 'pass') || recoveryFailures(result).length)) failed = true;
     save(result);
   }
   return !failed;
@@ -210,7 +211,7 @@ function prepare() {
 function merge() {
   const results = columns.map(([label]) => read(`out/ci-${label}.json`));
   const failures = results.flatMap((result, index) => columns[index][3] ?
-    result.rows.filter(row => row.required && row.outcome !== 'pass').map(row => `${result.runner}/${row.item}: ${row.outcome}`) : []);
+    [...result.rows.filter(row => row.required && row.outcome !== 'pass').map(row => `${result.runner}/${row.item}: ${row.outcome}`), ...recoveryFailures(result)] : []);
   fs.writeFileSync('merged-results.json', `${JSON.stringify({ results, required_pass: failures.length === 0 }, null, 2)}\n`);
   if (failures.length) console.error(failures.join('\n'));
   return failures.length === 0;
@@ -237,7 +238,7 @@ async function main() {
     const files = ['out/ci-spike-safari-macos.json', 'diagnostics/simulator-session-default.json', 'diagnostics/simulator-session-xcode26.json'];
     for (const file of files) {
       const result = complete(read(file), manifest());
-      if (result.rows.some(row => row.required && row.outcome !== 'pass')) success = false;
+      if (result.rows.some(row => row.required && row.outcome !== 'pass') || recoveryFailures(result).length) success = false;
     }
   } else if (command === 'infra') save(infrastructure(args[0], args.slice(1).join(' ')));
   else if (command === 'simulators') success = simulators(args.includes('--spike'));

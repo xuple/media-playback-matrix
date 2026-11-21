@@ -136,6 +136,7 @@ export async function run(options = {}) {
             resultsBase: withHostname(base, '127.0.0.1'),
             outDir,
             identify: identifyAndroid,
+            recoverDisconnect: true,
             rowTimeoutMs,
             readyTimeoutMs: options.readyTimeoutMs || rowTimeoutMs,
         });

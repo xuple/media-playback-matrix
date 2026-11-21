@@ -67,7 +67,7 @@ function passRow(key) {
     };
 }
 
-function createPage(options) {
+export function createPage(options) {
     const buttons = (options.buttons || []).map((key) => ({ key, id: null }));
     const hang = new Set(options.hangKeys || []);
     const delays = options.delays || {};
@@ -105,7 +105,9 @@ function createPage(options) {
 
     window.__matrix = {
         ready: options.hangReady ? new Promise(() => {}) : Promise.resolve(true),
-        done(key) {
+        done(key, minAttempt = 1) {
+            const attempt = state.clicks.slice(state.sessionStart || 0).filter(clicked => clicked === key).length;
+            if (attempt < minAttempt) return new Promise(() => {});
             if (hang.has(key)) {
                 return new Promise(() => {});
             }
@@ -114,7 +116,8 @@ function createPage(options) {
 
             return new Promise((resolve) => {
                 setTimeout(() => {
-                    const row = passRow(key);
+                    const configured = options.attemptRows?.[key]?.[attempt - 1];
+                    const row = { ...passRow(key), ...(configured || {}), attempt };
                     state.completed.push(row);
                     resolve(row);
                 }, delayMs);
@@ -267,6 +270,13 @@ export async function startFakeWebDriver(options = {}) {
         }
 
         const session = parts[0] === 'session' ? sessions.get(parts[1]) : null;
+        if (session && options.disconnects?.some(drop =>
+            drop.session === sessionCounter && drop.key === body?.args?.[0]
+            && parts[3] === 'async' && String(body?.script).includes('matrix.done'))) {
+            send(response, 500, { error: 'unknown error', message: 'disconnected: unable to send message to renderer', stacktrace: '' });
+            return;
+        }
+
 
         if (parts[0] === 'session' && parts[1] && !session) {
             send(response, 404, { error: 'invalid session id', message: `No session ${parts[1]}`, stacktrace: '' });
@@ -284,6 +294,8 @@ export async function startFakeWebDriver(options = {}) {
 
         if (request.method === 'POST' && parts.length === 3 && parts[2] === 'url' && session) {
             session.navigations.push(body?.url);
+            page.state.completed = [];
+            page.state.sessionStart = page.state.clicks.length;
             send(response, 200, null);
 
             return;

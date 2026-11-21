@@ -62,6 +62,10 @@ jobs:
             exit 1
           fi
           node runners/ci.mjs run safari-macos -- node runners/safari-webdriver.mjs --target safari
+      - name: Record audio devices
+        if: always()
+        continue-on-error: true
+        run: system_profiler SPAudioDataType > diagnostics/audio-devices.txt
       - name: Sequential simulator sessions
         if: always()
         continue-on-error: true
@@ -230,6 +234,7 @@ jobs:
           api-level: 34
           target: google_apis_playstore
           arch: x86_64
+          ram-size: 4096M
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot
           disable-linux-hw-accel: false
           script: bash bin/ci-android.sh android-chrome
@@ -351,6 +356,10 @@ jobs:
             exit 1
           fi
           node runners/ci.mjs run spike-safari-macos -- node runners/safari-webdriver.mjs --target safari
+      - name: Record audio devices
+        if: always()
+        continue-on-error: true
+        run: system_profiler SPAudioDataType > diagnostics/audio-devices.txt
       - name: Sequential simulator sessions
         if: always()
         continue-on-error: true
@@ -414,6 +423,7 @@ jobs:
           api-level: 34
           target: google_apis_playstore
           arch: x86_64
+          ram-size: 4096M
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot
           disable-linux-hw-accel: false
           script: bash bin/ci-android.sh spike-android-chrome

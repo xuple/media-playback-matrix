@@ -874,3 +874,65 @@ test('resolveChromedriver ignores a PATH driver for another Chrome and uses the 
     assert.equal(urls[0], 'https://chromedriver.storage.googleapis.com/LATEST_RELEASE_113');
     assert.equal(urls[1], 'https://chromedriver.storage.googleapis.com/113.0.5672.63/chromedriver_linux64.zip');
 });
+
+const replayStall = {
+    outcome: 'fail:stall',
+    stages: { load: { ok: true, ms: 1 }, play: { ok: true, ms: 1 }, seek: null,
+        replay: { ok: false, ms: 1, detail: 'no seeked after rewind' }, muted_autoplay: null },
+};
+
+for (const [name, target, second, expected] of [
+    ['simulator replay stall recovers once', 'simulator', {}, 'pass'],
+    ['simulator second replay stall fails', 'simulator', replayStall, 'fail:stall'],
+    ['desktop replay stall never retries', 'safari', {}, 'fail:stall'],
+]) {
+    test(name, async () => {
+        const key = 'voice-memo|playback|live';
+        const fake = await startFakeWebDriver({ buttons: [key], attemptRows: { [key]: [replayStall, second] },
+            returnedCapabilities: { browserVersion: '26.2', platformVersion: '26.2', 'safari:platformVersion': '26.2', 'safari:deviceName': 'iPhone' } });
+        const sink = await startResultsSink();
+        const work = await makeWorkDir();
+        try {
+            const { results } = await runSafari({ target, udid: 'test-udid', base: sink.url, out: work,
+                driverUrl: fake.url, lockPath: path.join(work, 'lock') });
+            const row = results.rows[0];
+            assert.equal(row.outcome, expected);
+            assert.equal(fake.page.state.clicks.length, target === 'simulator' ? 2 : 1);
+            if (target === 'simulator') {
+                assert.equal(row.attempts.length, 2);
+                assert.equal(row.attempts[0].outcome, 'fail:stall');
+                assert.equal(row.attempts[1].attempt, 2);
+                const doneCalls = fake.log.filter(entry => typeof entry.body?.script === 'string' && entry.body.script.includes('matrix.done'));
+                assert.deepEqual(doneCalls.map(entry => entry.body.args[1]), [1, 2]);
+                if (expected === 'pass') {
+                    const { makeReport } = await import('../report.mjs');
+                    assert.match(makeReport([results], { fixtures: { items: [{ id: 'voice-memo' }] } }).markdown, /✓ retry/);
+                }
+            } else assert.equal(row.attempts, undefined);
+        } finally { await fake.close(); await sink.close(); await rm(work, { recursive: true, force: true }); }
+    });
+}
+
+for (const twice of [false, true]) {
+    test(`Android disconnect rebuilds only once${twice ? ' and second disconnect leaves infra' : ''}`, async () => {
+        const keys = ['one|playback|live', 'two|playback|live', 'three|playback|live'];
+        const fake = await startFakeWebDriver({ buttons: keys,
+            disconnects: [{ session: 1, key: keys[1] }, ...(twice ? [{ session: 2, key: keys[1] }] : [])],
+            returnedCapabilities: { browserVersion: '131.0.0.0', platformVersion: '14' } });
+        const sink = await startResultsSink();
+        const work = await makeWorkDir();
+        try {
+            const { results } = await runAndroid({ base: sink.url, out: work, driverUrl: fake.url });
+            assert.equal(results.session_restarts, 1);
+            assert.deepEqual(results.rows.map(row => row.outcome), twice ? ['pass', 'infra', 'infra'] : ['pass', 'pass', 'pass']);
+            assert.deepEqual(results.rows.map(row => !!row.session_restarted), [false, true, true]);
+            assert.equal(fake.log.filter(entry => entry.path === '/session').length, 2);
+            assert.equal(fake.log.filter(entry => entry.method === 'DELETE').length, 2);
+            assert.deepEqual(fake.page.state.clicks, twice ? [keys[0], keys[1], keys[1]] : [keys[0], keys[1], keys[1], keys[2]]);
+            if (!twice) {
+                const { makeReport } = await import('../report.mjs');
+                assert.match(makeReport([results], { fixtures: { items: keys.map(key => ({ id: key.split('|')[0] })) } }).markdown, /✓ restart/);
+            }
+        } finally { await fake.close(); await sink.close(); await rm(work, { recursive: true, force: true }); }
+    });
+}

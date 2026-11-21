@@ -39,3 +39,23 @@ The interfaces every part codes against. Fixtures + manifest: `fixtures/` (gener
               "requests": [ {"range":"bytes=0-1","status":206,"bytes":2} ] } ] }
 Stage object: { "ok": bool, "ms": int, "detail": string }.
 required = rendition playback AND variant live.
+
+## Bounded recovery evidence
+
+A new Play click clears the row result and increments its `attempt` (starting at 1), creating a fresh audio element.
+`done(key, minAttempt = 1)` waits for that attempt or later; an old result cannot satisfy `done(key, 2)`.
+Replay records `replay_path` on the row and replay stage: `play-after-ended` or `rewind-fallback`.
+The fallback pauses, rewinds to zero, and requires a real `seeked` within the remaining replay deadline.
+Missing `seeked` is `fail:stall` with detail `no seeked after rewind` and the element state; fallback success explicitly
+says the app play-after-ended path did not work. Media and policy failures do not enter the fallback.
+
+Only sessions requested with `safari:useSimulator: true` retry a replay-stage `fail:stall`, once, with a fresh tap.
+The row retains the second outcome and `attempts: [first, second]` summaries, including stages and errors.
+Desktop, Playwright and Android never use this row retry; load, play and seek stalls and media/policy/infra failures
+are not eligible. More than one required retried row in a simulator column fails the merge and report gates.
+
+Android alone rebuilds a disconnected WebDriver session once (including `unable to send message to renderer` and
+`not connected to DevTools`). Completed rows are preserved; interrupted and remaining rows run in the new session
+and carry `session_restarted: true`. A second disconnect marks remaining rows `infra`. Top-level `session_restarts`
+counts session rebuilds, not affected rows; more than one fails the Android column gate. Reports show `✓ retry` or
+`✓ restart` and counts per column. Recovered passes remain `outcome: "pass"` and do not prove first-attempt reliability.

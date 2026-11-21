@@ -10,6 +10,7 @@
     "device": {"type": ["string", "null"]},
     "started_at": {"type": "string"}, "finished_at": {"type": "string"},
     "server_commit": {"type": ["string", "null"]}, "recipe_sha256": {"type": ["string", "null"]},
+    "session_restarts": {"type": "integer"},
     "rows": {"type": "array", "items": {
       "type": "object",
       "required": ["item", "rendition", "variant", "required", "outcome", "stages"],
@@ -19,6 +20,13 @@
         "variant": {"enum": ["live", "no-cache", "as-stored"]},
         "required": {"type": "boolean"},
         "outcome": {"enum": ["pass", "fail:media", "fail:policy", "fail:stall", "infra", "missing"]},
+        "attempt": {"type": "integer"},
+        "attempts": {"type": "array", "items": {"type": "object", "required": ["outcome", "stages"], "properties": {
+          "outcome": {"enum": ["pass", "fail:media", "fail:policy", "fail:stall", "infra", "missing"]},
+          "stages": {"type": "object"}, "replay_path": {"$ref": "#/$defs/replay_path"}
+        }}},
+        "session_restarted": {"type": "boolean"},
+        "replay_path": {"$ref": "#/$defs/replay_path"},
         "can_play_type": {"type": "string"},
         "duration": {"type": ["number", "null"]},
         "error": {"type": ["object", "null"]},
@@ -32,5 +40,5 @@
       }
     }}
   },
-  "$defs": {"stage": {"type": "object", "required": ["ok", "ms"], "properties": {"ok": {"type": "boolean"}, "ms": {"type": "integer"}, "detail": {"type": "string"}}}}
+  "$defs": {"replay_path": {"enum": ["play-after-ended", "rewind-fallback"]}, "stage": {"type": "object", "required": ["ok", "ms"], "properties": {"ok": {"type": "boolean"}, "ms": {"type": "integer"}, "detail": {"type": "string"}, "replay_path": {"$ref": "#/$defs/replay_path"}}}}
 }

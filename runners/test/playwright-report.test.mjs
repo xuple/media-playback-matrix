@@ -227,3 +227,45 @@ test('informational columns (WebKit, bundled Chromium) never gate the run; --gat
     assert.equal(report.exitCode, 0);
     assert.match(report.markdown, /^PASS: 1\/1 required checks passed/);
 });
+
+test('report enforces simulator required retry and Android session restart budgets', async () => {
+    const { recoveryFailures, recoveryCounts } = await import('../../lib/recovery.mjs');
+    const retried = row => ({ ...row, attempts: [{ outcome: 'fail:stall', stages: row.stages }, { ...row }] });
+    for (const count of [0, 1, 2]) {
+        const rows = Array.from({ length: 2 }, (_, i) => ({ ...passRows()[0], item: `item${i}` }));
+        const sim = { ...result('ios-26.2-iphone', rows.map((row, i) => i < count ? retried(row) : row)), device: 'iPhone (sim)' };
+        const report = makeReport([sim], { fixtures: { items: rows.map(row => ({ id: row.item })) } });
+        assert.equal(report.exitCode, count > 1 ? 1 : 0);
+        assert.equal(recoveryFailures(sim).length, count > 1 ? 1 : 0);
+        assert.equal(recoveryCounts(sim).requiredRetries, count);
+        const android = { ...result('android-chrome'), session_restarts: count };
+        assert.equal(makeReport([android], { fixtures }).exitCode, count > 1 ? 1 : 0);
+        assert.equal(recoveryFailures(android).length, count > 1 ? 1 : 0);
+    }
+    const informational = { ...result('ios-26.2-iphone', passRows().map(row => row.required ? row : retried(row))), device: 'iPhone (sim)' };
+    assert.equal(makeReport([informational], { fixtures }).exitCode, 0);
+    const recovered = { ...result('android-chrome', passRows().map(row => ({ ...row, session_restarted: true }))), session_restarts: 1 };
+    assert.match(makeReport([recovered], { fixtures }).markdown, /1 session restarts/);
+});
+
+test('CI merge fails only above the recovery thresholds', async t => {
+    const { columns } = await import('../ci.mjs');
+    const { spawnSync } = await import('node:child_process');
+    const { mkdir } = await import('node:fs/promises');
+    const work = await directory(t);
+    await mkdir(path.join(work, 'out'));
+    const ci = fileURLToPath(new URL('../ci.mjs', import.meta.url));
+    for (const [retries, restarts, expected] of [[1, 1, 0], [2, 1, 1], [1, 2, 1]]) {
+        for (const [label] of columns) {
+            const rows = Array.from({ length: 2 }, (_, i) => ({ ...passRows()[0], item: `item${i}`,
+                ...(label === 'ios-26.2-iphone' && i < retries ? { attempts: [
+                    { outcome: 'fail:stall', stages: {} }, { outcome: 'pass', stages: {} },
+                ] } : {}) }));
+            await writeFile(path.join(work, 'out', `ci-${label}.json`), JSON.stringify({ ...result(label, rows),
+                ...(label === 'android-chrome' ? { session_restarts: restarts } : {}) }));
+        }
+        const merged = spawnSync(process.execPath, [ci, 'merge'], { cwd: work, encoding: 'utf8' });
+        assert.equal(merged.status, expected, merged.stderr);
+        assert.equal(JSON.parse(await readFile(path.join(work, 'merged-results.json'), 'utf8')).required_pass, expected === 0);
+    }
+});

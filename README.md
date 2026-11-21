@@ -152,3 +152,16 @@ lock/background/resume and Bluetooth headphones are worth noting by hand. Keep t
 ## Licence
 
 MIT. See [LICENSE](LICENSE).
+
+### What retries mean
+
+Simulator Safari gets one fresh-tap retry only for a replay stall. Each attempt still tests replay on the same audio
+element; the new tap creates a fresh element. Results preserve both attempts and show **✓ retry** on recovery.
+The replay stage records `replay_path`: `play-after-ended` or `rewind-fallback`. A fallback pass means the app's
+ordinary play-after-ended path did not work; rewinding must produce a real `seeked` before playback resumes.
+Desktop, Playwright and Android do not get this row retry, and media/policy errors and other stage stalls never qualify.
+
+Android can rebuild one disconnected browser session and continue only unfinished rows, shown as **✓ restart**.
+A second disconnect leaves unfinished rows as infrastructure failures. Each report lists retry and session restart
+counts per column. More than one required retry in a simulator column, or more than one Android session restart,
+fails CI even if the final rows pass. Recovery is visible evidence of an intermittent failure, not a clean first pass.

@@ -131,7 +131,7 @@
             hint: typeof info.duration === 'number' ? info.duration
               : (item.playback && typeof item.playback.duration === 'number' ? item.playback.duration : null),
             check: (item.checks && item.checks.indexOf('seek') >= 0) ? 'seek' : 'replay',
-            result: null, running: false, muted: null, heard: null, played: false,
+            result: null, attempt: 0, running: false, muted: null, heard: null, played: false,
             waiters: deferred(), ui: {}
           };
           rows.push(r);
@@ -281,9 +281,12 @@
     var r = byKey[key];
     if (!r || r.running) return;
     if (mutedPassRunning) mutedPassAbort = true; // keep the decoder budget for the gesture run
+    r.result = null;
+    r.attempt += 1;
     r.running = true;
     r.played = true;
     var res = blankResult(r);
+    res.attempt = r.attempt;
     res.can_play_type = canPlay(r.mime);
     var ctx = {};
     var audio, t0 = now();
@@ -379,6 +382,8 @@
   // 12 s items: jump near the end, play to `ended`, then play again from 0 (the no-store refetch question).
   async function replayCheck(r, res, ctx, audio) {
     var t0 = now();
+    res.replay_path = 'play-after-ended';
+    var onRewindSeeked = null;
     try {
       var d = audio.duration;
       var target = (typeof d === 'number' && isFinite(d)) ? d - 1 : (r.hint ? r.hint - 1 : null);
@@ -396,27 +401,37 @@
       // 2. Only if that doesn't move: rewind, WAIT for `seeked`, then play(). Rewinding and calling play() at once
       //    races in WebKit (play() resolves, then the element is paused and ended again at t=0; CI 21 Nov 2026).
       // The detail says which one worked: if 2 is needed on a platform, the app's player needs it too.
-      var replayed = function () { return !audio.ended && audio.currentTime >= CHECK_ADVANCE && audio.currentTime < 5; };
+      var replayed = function () { return !audio.paused && !audio.ended && audio.currentTime >= CHECK_ADVANCE && audio.currentTime < 5; };
       var how = 'play() after ended';
       startPlay(ctx, audio);
       try {
         await waitFor(ctx, audio, replayed, Math.max(Math.min(left, 5000), 1), 'progress after play() following ended');
       } catch (first) {
-        how = 'needed rewind + seeked before play()';
+        if (first.cls !== 'fail:stall') throw first;
+        res.replay_path = 'rewind-fallback';
+        how = 'rewind fallback; app play-after-ended path did not work: ' + first.detail;
         audio.pause();
-        var seekedOnce = new Promise(function (resolve) {
-          var done = function () { audio.removeEventListener('seeked', done); resolve(); };
-          audio.addEventListener('seeked', done);
-          setTimeout(done, 3000);
-        });
+        var rewindSeeked = false;
+        onRewindSeeked = function () { rewindSeeked = true; };
+        audio.addEventListener('seeked', onRewindSeeked);
         audio.currentTime = 0;
-        await seekedOnce;
+        await waitFor(ctx, audio, function () { return rewindSeeked && !audio.seeking; },
+          Math.max(DEADLINE.replay - (now() - t0), 1), 'seeked after rewind');
+        audio.removeEventListener('seeked', onRewindSeeked);
+        onRewindSeeked = null;
         startPlay(ctx, audio);
         await waitFor(ctx, audio, replayed, Math.max(DEADLINE.replay - (now() - t0), 1), 'progress after rewind + seeked + play()');
       }
       res.stages.replay = { ok: true, ms: Math.round(now() - t0),
+        replay_path: res.replay_path,
         detail: 'ended, replayed to t=' + round(audio.currentTime) + ' · ' + how + promiseNote(ctx) };
-    } catch (e) { stageFail(res, 'replay', t0, e); }
+    } catch (e) {
+      try { stageFail(res, 'replay', t0, e); }
+      finally { res.stages.replay.replay_path = res.replay_path; }
+    } finally {
+      if (onEnded) audio.removeEventListener('ended', onEnded);
+      if (onRewindSeeked) audio.removeEventListener('seeked', onRewindSeeked);
+    }
   }
 
   function finishRow(r, res, audio, outcome, detail) {
@@ -569,11 +584,14 @@
     return x.item + (tags.length ? ' (' + tags.join(', ') + ')' : '') + ' ' + x.outcome;
   }
 
-  function done(key) {
+  function done(key, minAttempt) {
     var r = byKey[key];
     if (!r) return Promise.reject(new Error('unknown row ' + key));
-    if (!r.running && r.result) return Promise.resolve(rowResult(r));
-    return r.waiters.promise;
+    minAttempt = minAttempt || 1;
+    if (!r.running && r.result && r.attempt >= minAttempt) return Promise.resolve(rowResult(r));
+    return r.waiters.promise.then(function (result) {
+      return result.attempt >= minAttempt ? result : done(key, minAttempt);
+    });
   }
 
   // ---- rendering ----

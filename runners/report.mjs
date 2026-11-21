@@ -1,4 +1,5 @@
 // Owner: audio-matrix R1. 2026-11-20. No dependencies: only the schema keywords in the contract are needed.
+import { recoveryCounts, recoveryFailures } from '../lib/recovery.mjs';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -93,6 +94,12 @@ export function makeReport(results, { expect = [], fixtures = manifest, errors =
             if (outcome !== 'pass') failures.push(`- ${cell(label)} / ${cell(keyOf(row))}${required(row) && gating(label) ? ' (required)' : ''}: ${cell(outcome)} — ${cell(result ? reason(result) : 'row absent')}`);
         }
     }
+    for (const label of labels) {
+        if (gating(label)) {
+            const budgetFailures = recoveryFailures(runners.get(label));
+            if (budgetFailures.length) { failed = true; failures.push(...budgetFailures.map(message => '- ' + cell(message))); }
+        }
+    }
     const lines = [`${failed ? 'FAIL' : 'PASS'}: ${passed}/${total} required checks passed across ${labels.length} runners.`, '',
         `| Item / rendition / variant | ${labels.map(label => cell(label) + (runners.get(label).browser?.name === 'WebKit (not Safari)' || /(?:^|-)webkit(?:-|$)/i.test(label) ? ' — WebKit (not Safari)' : '')).join(' | ')} |`,
         `| --- | ${labels.map(() => '---').join(' | ')} |`];
@@ -100,12 +107,16 @@ export function makeReport(results, { expect = [], fixtures = manifest, errors =
         lines.push(`| ${required(row) ? '**Required** ' : ''}${cell(row.item)} / ${row.rendition} / ${row.variant} | ${labels.map(label => {
             const result = runners.get(label).rows.get(keyOf(row));
             if (!result) return '– missing';
-            if (result.outcome === 'pass') return '✓';
+            if (result.outcome === 'pass') return result.attempts?.length > 1 ? '✓ retry' : result.session_restarted ? '✓ restart' : '✓';
             const symbol = ['missing', 'infra'].includes(result.outcome) ? '–' : '✗';
             const detail = reason(result);
             return `${symbol} ${cell(result.outcome)}${detail === result.outcome ? '' : `: ${cell(detail.slice(0, 90))}`}`;
         }).join(' | ')} |`);
     }
+    lines.push('', ...labels.map(label => {
+        const counts = recoveryCounts(runners.get(label));
+        return `- ${cell(label)}: ${counts.retries} retries (${counts.requiredRetries} required), ${counts.restarts} session restarts.`;
+    }));
     if (failures.length || errors.length) lines.push('', '### Failures', '', ...errors.map(error => `- ${cell(error)}`), ...failures);
     return { markdown: `${lines.join('\n')}\n`, exitCode: failed ? 1 : 0, results };
 }
