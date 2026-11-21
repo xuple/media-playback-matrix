@@ -351,6 +351,29 @@ export async function startFakeWebDriver(options = {}) {
             return;
         }
 
+        // Touch tap (iOS simulator): the runner reads the element's rect, then performs a pointer action there.
+        if (request.method === 'GET' && parts.length === 5 && parts[2] === 'element' && parts[4] === 'rect' && session) {
+            const button = page.buttons.find((entry) => entry.id === decodeURIComponent(parts[3]));
+            if (!button) {
+                send(response, 404, { error: 'stale element reference', message: 'Element is gone', stacktrace: '' });
+                return;
+            }
+            session.tapTarget = button;
+            send(response, 200, { x: 10, y: 20, width: 300, height: 44 });
+            return;
+        }
+
+        if (parts.length === 3 && parts[2] === 'actions' && session) {
+            if (request.method === 'POST' && session.tapTarget) {
+                session.clicks.push(session.tapTarget.key);
+                page.state.clicks.push(session.tapTarget.key);
+                session.taps = (session.taps || 0) + 1;
+                session.tapTarget = null;
+            }
+            send(response, 200, null);
+            return;
+        }
+
         if (request.method === 'POST' && parts.length === 4 && parts[2] === 'execute' && parts[3] === 'sync' && session) {
             try {
                 const value = runInPage(body?.script || '', body?.args || [], session.sandbox);

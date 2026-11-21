@@ -97,8 +97,12 @@ function run(group, command, args, timeoutMs = 20 * 60_000) {
       result = { ...result, source_runner: result.runner, runner: label };
       if (execution.status !== 0) {
         result.runner_error = `Runner exited ${execution.status}: ${execution.error?.message ?? 'see job log'}`;
-        // A multi-browser command can fail for another column; retain each column's evidence.
-        if (expected.length === 1) {
+        // A multi-browser command can fail for another column; retain each column's evidence. A runner also exits
+        // non-zero when a row legitimately fails: a result that covers every manifest row is complete evidence and is
+        // kept as written; only a partial result has its passes demoted (the crash may have cut it short).
+        const before = result.rows.length;
+        const covered = complete({ ...result, rows: [...result.rows] }, manifest()).rows.length === before;
+        if (expected.length === 1 && !covered) {
           result.rows = result.rows.map(row => row.required && row.outcome === 'pass' ?
             { ...row, outcome: 'infra', error: { message: result.runner_error } } : row);
         }
@@ -140,6 +144,8 @@ function simulators(spike) {
         udid = selected.device?.udid ?? checked('xcrun', ['simctl', 'create', `Audio matrix ${family} ${version}`,
           selected.type.identifier, selected.runtime.identifier], { env }).trim();
         if (selected.device?.state !== 'Booted') checked('xcrun', ['simctl', 'boot', udid], { env });
+        // One safaridriver at a time: a desktop session's driver left running blocks the simulator's.
+        exec('pkill', ['-x', 'safaridriver'], { env });
         checked('xcrun', ['simctl', 'bootstatus', udid, '-b'], { env });
         // safaridriver attaches far more reliably once Simulator.app shows the device and Safari has
         // run once (WebKit bug 205532); otherwise it times out finding a remote Safari.
