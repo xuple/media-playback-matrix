@@ -374,6 +374,21 @@ export async function startFakeWebDriver(options = {}) {
             return;
         }
 
+        if (request.method === 'POST' && parts.length === 4 && parts[2] === 'execute' && parts[3] === 'sync' && session
+            && String(body?.script || '').includes('getBoundingClientRect')) {
+            // The touch tap's scroll-and-measure script: remember the target, report an on-screen rect.
+            const ref = (body?.args || [])[0] || {};
+            const id = ref['element-6066-11e4-a52e-4f735466cecf'] || ref.ELEMENT;
+            const button = page.buttons.find((entry) => entry.id === id);
+            if (!button) {
+                send(response, 404, { error: 'stale element reference', message: 'Element is gone', stacktrace: '' });
+                return;
+            }
+            session.tapTarget = button;
+            send(response, 200, { x: 10, y: 300, width: 300, height: 44 });
+            return;
+        }
+
         if (request.method === 'POST' && parts.length === 4 && parts[2] === 'execute' && parts[3] === 'sync' && session) {
             try {
                 const value = runInPage(body?.script || '', body?.args || [], session.sandbox);
